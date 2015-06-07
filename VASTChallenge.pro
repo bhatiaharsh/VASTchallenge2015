@@ -20,7 +20,7 @@ else {
     DEFINES *= LINUX
 }
 
-CONFIG *= staticlib
+CONFIG *= lib
 
 
 MOC_DIR = $$PWD/build/
@@ -31,30 +31,6 @@ DESTDIR = $$PWD/build/
 
 message($$DESTDIR)
 
-## -------------------------------------------------
-## specify external libraries and paths to be used
-## -------------------------------------------------
-
-# -- static linking
-staticlib {
-
-    # QGLViewer (as library)
-    INCLUDEPATH *= $$(HOME)/usr/include
-    LIBS *= $$(HOME)/usr/lib/libQGLViewer.a
-}
-
-# -- dynamic linking
-else {
-
-    # QGLViewer (as framework)
-    #QMAKE_LFLAGS += -F$$(HOME)/Library/Frameworks
-    #LIBS += -framework QGLViewer
-    #INCLUDEPATH *= $$(HOME)/Library/Frameworks/QGLViewer.Framework/Headers
-
-    # QGLViewer (as library)
-    INCLUDEPATH *= $$(HOME)/usr/include
-    LIBS *= -L$$(HOME)/usr/lib -lQGLViewer
-}
 # -----------------------------------------
 
 INCLUDEPATH *= ./include

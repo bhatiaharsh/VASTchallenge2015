@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>981</width>
-    <height>865</height>
+    <width>1213</width>
+    <height>850</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,16 +28,16 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>981</width>
-     <height>22</height>
+     <width>1213</width>
+     <height>25</height>
     </rect>
    </property>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
    <property name="minimumSize">
     <size>
-     <width>150</width>
-     <height>700</height>
+     <width>190</width>
+     <height>706</height>
     </size>
    </property>
    <attribute name="dockWidgetArea">
@@ -52,8 +52,8 @@
       <rect>
        <x>5</x>
        <y>0</y>
-       <width>141</width>
-       <height>161</height>
+       <width>180</width>
+       <height>191</height>
       </rect>
      </property>
      <property name="title">
@@ -76,7 +76,7 @@
        <rect>
         <x>8</x>
         <y>30</y>
-        <width>61</width>
+        <width>71</width>
         <height>16</height>
        </rect>
       </property>
@@ -90,7 +90,7 @@
       </property>
       <property name="geometry">
        <rect>
-        <x>70</x>
+        <x>90</x>
         <y>27</y>
         <width>71</width>
         <height>24</height>
@@ -134,7 +134,7 @@
       </property>
       <property name="geometry">
        <rect>
-        <x>70</x>
+        <x>90</x>
         <y>50</y>
         <width>71</width>
         <height>24</height>
@@ -162,8 +162,8 @@
       </property>
       <property name="geometry">
        <rect>
-        <x>32</x>
-        <y>74</y>
+        <x>30</x>
+        <y>80</y>
         <width>81</width>
         <height>32</height>
        </rect>
@@ -181,8 +181,8 @@
       </property>
       <property name="geometry">
        <rect>
-        <x>32</x>
-        <y>99</y>
+        <x>30</x>
+        <y>120</y>
         <width>81</width>
         <height>32</height>
        </rect>
@@ -200,8 +200,8 @@
       </property>
       <property name="geometry">
        <rect>
-        <x>32</x>
-        <y>124</y>
+        <x>30</x>
+        <y>160</y>
         <width>81</width>
         <height>32</height>
        </rect>

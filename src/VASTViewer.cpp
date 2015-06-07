@@ -6,6 +6,7 @@
 #include <string>
 #include <numeric>
 #include <float.h>
+#include <iostream>
 
 /// ----------------------------
 /// my header files
@@ -16,118 +17,107 @@
 using namespace std;
 
 /// -----------------------------------------------------------------
-VASTViewer::VASTViewer(QWidget *parent) : QGLViewer(parent){
+VASTViewer::VASTViewer(QWidget *parent) :
+    QGLWidget(QGLFormat(QGL::SampleBuffers), parent),
+    parentApp((VASTApp *) parent),
+    live_animation_time(0),
+    park_X(500),
+    park_Y(500),
+    animation_period(50), // milliseconds
+    animating(false),
+    anim_timer(new QTimer)
+{
+    connect(anim_timer, SIGNAL(timeout()), this, SLOT(animate()));
 
-    parentApp = (VASTApp*)parent;
-    this->live_animation_time = 0;
-    this->park_X = 500;
-    this->park_Y = 500;
+    setMinimumSize(800, 800);
+    setAutoFillBackground(false);
 }
 
-void VASTViewer::init(){
-
-    this->setSceneCenter(qglviewer::Vec(0.5,0.5,0));
-    //this->setSceneRadius(0.6);
-    this->camera()->centerScene();
-
-    this->setMouseBinding(Qt::NoModifier, Qt::LeftButton, NO_CLICK_ACTION);
-
-    this->setFPSIsDisplayed(true);
-    this->setTextIsEnabled(true);
-
-    this->setBackgroundColor(Qt::white);
-    this->setForegroundColor(Qt::black);
-
-    this->setAnimationPeriod(1);        // milliseconds!
-
-    cout << "\n -------------------------------------------------------- \n";
-    cout << " | OpenGL Renderer: " << (char*) glGetString(GL_RENDERER) << "\n";
-    cout << " | OpenGL Version: " << (char*) glGetString(GL_VERSION) << "\n";
-    cout << " -------------------------------------------------------- \n\n";
-
-/*    // create a precompiled list to draw spheres
-    sphereList = glGenLists(1);
-    glNewList(sphereList, GL_COMPILE);
-        ViewerUtils::draw_sphere(1.0, 40, 40);
-    glEndList();
-*/
-
-    // init the viewer
-
-    glEnable(GL_NORMALIZE);
-    glShadeModel(GL_SMOOTH);
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-
-    glDisable(GL_CULL_FACE);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(true);
-    glDepthFunc(GL_LEQUAL);
-    //glDepthFunc(GL_LESS);
-/*
-    // lighting
-    GLfloat ambientLight[] = {0.5f, 0.5f, 0.5f, 1.0f};
-    GLfloat lightColor[] = {0.8f, 0.8f, 0.8f, 1.0f};
-
-    GLfloat lightPos[] = {1.0, 1.0, 1.0, 1.0 };
-
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientLight);
-
-    //Diffuse (non-shiny) light component
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightColor);
-
-    //Specular (shiny) light component
-    glLightfv(GL_LIGHT0, GL_SPECULAR, lightColor);
-    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
-
-    //Disable color materials, so that glMaterial calls work
-    glDisable(GL_COLOR_MATERIAL);
-
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-*/
-
-
-    // load the park map and bind as opengl texture!
+void VASTViewer::toggleAnimation()
+{
+    if (this->animating)
     {
-        glEnable(GL_TEXTURE_2D);
-        QImage rawjpg;
+        this->anim_timer->stop();
+    }
+    else
+    {
+        this->anim_timer->start(this->animation_period);
+    }
+    this->animating = !(this->animating);
+}
 
-        if(!rawjpg.load( "../ParkMap.jpg")){
+void VASTViewer::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
 
-            printf("Cannot load Park Map!\n");
-            exit(1);
-        }
+    // Clear
+    qglClearColor(Qt::white);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-        QImage txtimg = QGLWidget::convertToGLFormat( rawjpg );
-        glGenTextures( 1, &maptextid );
-        glBindTexture( GL_TEXTURE_2D, maptextid );
-        glTexImage2D( GL_TEXTURE_2D, 0, 3, txtimg.width(), txtimg.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, txtimg.bits() );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    beginNativeGL();
+    drawNativeGL();
+    endNativeGL();
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    qtPaint(&painter);
+    painter.end();
+}
+
+void VASTViewer::initializeGL()
+{
+    glEnable(GL_MULTISAMPLE);
+    glDisable(GL_DEPTH);
+}
+
+void VASTViewer::beginNativeGL()
+{
+    makeCurrent();
+    glViewport(0, 0, width(), height());
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Switch for 2D drawing
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+}
+
+void VASTViewer::endNativeGL()
+{
+    // Revert settings for painter
+    glShadeModel(GL_FLAT);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_BLEND);
+
+
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+}
+
+
+void VASTViewer::drawNativeGL()
+{
+    glEnable(GL_TEXTURE_2D);
+    QImage rawjpg;
+
+    if(!rawjpg.load( "../ParkMap.jpg")){
+
+        printf("Cannot load Park Map!\n");
+        exit(1);
     }
 
-
-  // Restore previous viewer state.
-  //restoreStateFromFile();
-
-    // Opens help window
-  //help();
-}
-#if 0
-void AtomTrajectoryViewer::keyPressEvent(QKeyEvent* event){
-
-    switch(event->key()){
-
-        case 'N':   parentApp->ui.groupBox_anim->setChecked( !parentApp->ui.groupBox_anim->isChecked() );
-                    break;
-    }
-    updateGL();
-}
-#endif
-
-void VASTViewer::draw(){
+    QImage txtimg = QGLWidget::convertToGLFormat( rawjpg );
+    glGenTextures( 1, &maptextid );
+    glBindTexture( GL_TEXTURE_2D, maptextid );
+    glTexImage2D( GL_TEXTURE_2D, 0, 3, txtimg.width(), txtimg.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, txtimg.bits() );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDisable(GL_COLOR_MATERIAL);
@@ -212,17 +202,7 @@ void VASTViewer::draw(){
     }
 
 
-    /*// draw events
-    glBegin(GL_POINTS);
-    for(uint i = 0; i < num_events; i++){
 
-        const ParkEvent &e = parentApp->events[i];
-        if(e.timestamp > currtime)
-            break;
-        glVertex3f(e.X, e.Y, 0.01);
-    }
-    glEnd();
-*/
     {   // ----- write the current time
 
         glColor3f(0.1,0.1,0.1);
@@ -236,5 +216,9 @@ void VASTViewer::draw(){
 }
 
 void VASTViewer::animate(){
+    this->anim_timer->stop();
     live_animation_time = (live_animation_time + parentApp->ui.sb_animSpeed->value()) % (parentApp->aPark.time_end-parentApp->aPark.time_beg);
+    repaint();
+    this->anim_timer->start(this->animation_period);
+
 }

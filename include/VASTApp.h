@@ -8,9 +8,8 @@
 #include <QMainWindow>
 #include <QKeyEvent>
 #include <QString>
-
-#include "GL/gle.h"
-#include <QGLViewer/qglviewer.h>
+#include <QGLWidget>
+#include <QTimer>
 
 #include "ui_VASTChallenge.h"
 
@@ -25,27 +24,33 @@ class VASTApp;
 /// VASTViewer
 /// ===========================================================
 
-class VASTViewer : public QGLViewer{
-
-    VASTApp* parentApp;
-    //GLuint sphereList;
-
+class VASTViewer : public QGLWidget {
+    Q_OBJECT
 public:
-
+    VASTApp* parentApp;
     uint live_animation_time;
     float park_X, park_Y;
+    int animation_period;
+    bool animating;
+    QTimer * anim_timer;
 
     GLuint maptextid;
 
     VASTViewer(QWidget *parent);
+    bool animationIsStarted() { return animating; }
+    void toggleAnimation();
+
+public slots:
+    virtual void animate();
 
 protected :
+    void initializeGL();
+    void paintEvent(QPaintEvent *event);
+    virtual void drawNativeGL();
+    virtual void qtPaint(QPainter *painter) { Q_UNUSED(painter); }
+    void beginNativeGL();
+    void endNativeGL();
 
-    virtual void draw();
-    virtual void animate();
-    //virtual void keyPressEvent(QKeyEvent* event){}
-
-    virtual void init();
 };
 
 /// ===========================================================
@@ -84,8 +89,8 @@ protected slots:
 
     void on_pb_animRestart_clicked(){
         viewer->live_animation_time = 0;
-        viewer->updateGL();
+        viewer->animate();
     }
-  void on_sb_animSpeed_valueChanged(int){             viewer->updateGL(); }
+  void on_sb_animSpeed_valueChanged(int){ viewer->animate(); }
 };
 #endif
