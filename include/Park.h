@@ -5,6 +5,8 @@
 #include <map>
 #include <vector>
 #include <QString>
+//#include <fstream>
+
 
 #include "time.h"
 
@@ -19,11 +21,13 @@ struct CustomerEvent {
     unsigned short int type;    // event type
     time_t timestamp;
     coords location;
+    int ride_id;
 
     CustomerEvent(){}
-    CustomerEvent(unsigned short int type_, time_t timestamp_, coords location_){
+    CustomerEvent(unsigned short int type_, time_t timestamp_, int ride_id_, coords location_){
         type = type_;
         timestamp = timestamp_;
+        ride_id = ride_id_;
         location = location_;
     }
 
@@ -32,7 +36,7 @@ struct CustomerEvent {
     }*/
 
     void print() const {
-        printf(" %s : (%d, %d) -- %d\n", (type==CHECKIN ? "check-in" : "movement"), location.first, location.second, timestamp);
+        printf(" %s : (%d, %d) %d -- %d\n", (type==CHECKIN ? "check-in" : "movement"), location.first, location.second, ride_id, timestamp);
     }
 };
 
@@ -46,7 +50,7 @@ public:
     }
 
     // summary
-    void analyze();
+    void analyze(FILE *outfile);
 };
 
 /// ----------------------------------------------------------------
@@ -73,17 +77,19 @@ struct RideEvent {
 };
 
 struct ParkRide {
+    int ride_id;
     coords ride_coords;
     std::vector<RideEvent> all_events;
 
     std::map<time_t, int> ride_load;
     int max_ride_load;
 
-    ParkRide(coords loc_){
+    ParkRide(int id_, coords loc_){
+        ride_id = id_;
         ride_coords = loc_;
     }
 
-    void analyze();
+    void analyze(FILE *outfile);
     int get_load(time_t time_) const;
 };
 
@@ -93,13 +99,14 @@ struct ParkEvent {
 
     time_t timestamp;
     coords location;
+    int ride_id;
     unsigned short int eventtype;
     unsigned long int cust_id;
 
     ParkEvent(QString rline);
 
     void print() const {
-        printf(" time %d, loc (%d,%d), type %s, cust %d\n",
+        printf(" time %d, ride %d, loc (%d,%d), type %s, cust %d\n",
                timestamp, location.first, location.second, (eventtype==1 ? "check-in" : "movement"), cust_id);
     }
 
@@ -110,15 +117,20 @@ class Park {
 public:
     std::vector<ParkEvent> events;
 
-    std::map<coords, ParkRide> rides;
+    //std::map<coords, ParkRide> rides;
+    std::map<int, ParkRide> rides;
     std::map<unsigned long int, ParkCustomer> customers;
 
     time_t time_beg, time_end;
 
     int max_ride_load;
 
-    void read_events(std::string filename);
-    void parse_events();
+    std::map<coords,int> ridemap;
+    void create_ride_map();
+
+
+    void read_events(std::string infilename);
+    void parse_events(std::string dayname);
 };
 
 #endif

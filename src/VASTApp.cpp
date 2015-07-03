@@ -13,6 +13,8 @@
 
 #include "VASTApp.h"
 #include "Park.h"
+
+#include <fstream>
 /// -----------------------------------------------------------------
 using namespace std;
 
@@ -38,20 +40,36 @@ int get_num_lines(std::string filename){
     return num_lines;
 }
 
-void Park::read_events(std::string filename){
+#define WRITE_DATA
+void Park::read_events(std::string infilename){
 
-    FILE* input = fopen(filename.c_str(), "r");
+    create_ride_map();
+    max_ride_load = 0;
+
+    FILE* input = fopen(infilename.c_str(), "r");
     if(!input){
-        printf(" VASTApp::read_events -- could not open file --%s--\n", filename.c_str());
+        printf(" VASTApp::read_events -- could not open file --%s--\n", infilename.c_str());
         return;
     }
 
+#ifdef WRITE_DATA
+    string wfilename = infilename;
+    uint id = wfilename.find(".csv");
+    wfilename.insert(id, "-cleaned");
+
+    FILE* output = fopen(wfilename.c_str(), "w");
+    if(!output){
+        printf(" VASTApp::read_events -- could not open file for writing --%s--\n", wfilename.c_str());
+        return;
+    }
+#endif
+
     clock_t st = clock();
-    printf(" Reading %s...", filename.c_str());
+    printf(" Reading %s...", infilename.c_str());
     fflush(stdout);
 
     // count the number of events using wc command!
-    int num_lines = get_num_lines(filename);
+    int num_lines = get_num_lines(infilename);
     if(num_lines > 0){
         events.reserve(num_lines+1);
     }
@@ -59,6 +77,8 @@ void Park::read_events(std::string filename){
     // start reading
     char line[200];
     fgets(line,200,input);      // first row
+
+    //printf(" line = %s\n", line);
 
     while (!feof(input)){
 
@@ -68,13 +88,34 @@ void Park::read_events(std::string filename){
         //if(events.empty())
           //  printf(" first line = %s\n", line);
 
+        //printf(" line = %s\n", line);
+
         ParkEvent pe(line);
+        if(pe.eventtype != MOVEMENT && pe.eventtype != CHECKIN)
+            continue;
+
+        pe.ride_id = -100;
+        if(pe.eventtype == CHECKIN){
+            pe.ride_id = ridemap.find(pe.location)->second;
+        }
+
         events.push_back(pe);
 
         // create customers and rides!
         customers.insert(pair<unsigned long int, ParkCustomer>(pe.cust_id, ParkCustomer(pe.cust_id)));
         if(pe.eventtype == CHECKIN)
-            rides.insert(pair<coords, ParkRide>(pe.location, ParkRide(pe.location)));
+            rides.insert(pair<int, ParkRide>(pe.ride_id, ParkRide(pe.ride_id, pe.location)));
+
+
+#ifdef WRITE_DATA
+        QString rline(line);
+        rline = rline.left(rline.size()-1);
+        rline.append(",").append(QString::number(pe.ride_id)).append("\n");
+        fputs(rline.toLatin1().data(), output);
+#endif
+
+        //if(events.size() == 1000)
+          //  break;
     }
 
     //printf(" last line = %s\n", line);
@@ -88,9 +129,14 @@ void Park::read_events(std::string filename){
     printf("\t Start time - %d: %s", time_beg, ctime(&time_beg));
     printf("\t End time   - %d: %s", time_end, ctime(&time_end));
     fclose(input);
+#ifdef WRITE_DATA
+    fclose(output);
+#endif
+
 }
 
-void Park::parse_events(){
+
+void Park::parse_events(string dayname){
 
     clock_t st = clock();
     printf(" Parsing events...");
@@ -101,7 +147,8 @@ void Park::parse_events(){
     for(uint i = 0; i < num_events; i++){
 
         const ParkEvent &currevent = events[i];
-        CustomerEvent custevent(currevent.eventtype, currevent.timestamp, currevent.location);
+
+        CustomerEvent custevent(currevent.eventtype, currevent.timestamp, currevent.ride_id, currevent.location);
         customers.find(currevent.cust_id)->second.all_events.push_back(custevent);
     }
 
@@ -123,31 +170,53 @@ void Park::parse_events(){
 
             unsigned int time_chkout = (i == c.all_events.size()-1) ? custevent.timestamp : c.all_events[i+1].timestamp;
             RideEvent rideevent (c.cust_id, custevent.timestamp, time_chkout);
-            rides.find(custevent.location)->second.all_events.push_back(rideevent);
+            rides.find(custevent.ride_id)->second.all_events.push_back(rideevent);
         }
     }
 
     printf(" Done in %.3f sec!\n", ((float)(clock() - st))/CLOCKS_PER_SEC);
 
     {
-        std::map<coords, ParkRide>::iterator riter = rides.begin();
+        std::string rfilename = "rides-";
+        rfilename.append(dayname);
+        rfilename.append(".csv");
+
+        FILE *outfile = fopen(rfilename.c_str(), "w");
+        fprintf(outfile, "ride_id,X,Y,num_events,num_custs,avg_time,min_time,max_time,max_load\n");
+
+        std::map<int, ParkRide>::iterator riter = rides.begin();
         for(; riter != rides.end(); riter++){
 
             ParkRide &ride = riter->second;
-            ride.analyze();
+            ride.analyze(outfile);
 
             if(ride.max_ride_load > max_ride_load)
                 max_ride_load = ride.max_ride_load;
             //printf(" ride (%d,%d) has %d events!\n", riter->first.first, riter->first.second, riter->second.all_events.size());
         }
+
+        fclose(outfile);
+
+        std::string cfilename = "customers-";
+        cfilename.append(dayname);
+        cfilename.append(".csv");
+
+        outfile = 0;
+        outfile = fopen(cfilename.c_str(), "w");
+        fprintf(outfile, "cust_id,num_events,num_rides,total_time,ride_time,move_time\n");
+
         std::map<unsigned long int, ParkCustomer>::iterator citer = customers.begin();
         for(; citer != customers.end(); citer++){
-            citer->second.analyze();
+
+            ParkCustomer &cust = citer->second;
+            cust.analyze(outfile);
             //printf(" customer %d has %d events!\n", citer->first, citer->second.positions.size());
         }
+
+        fclose(outfile);
     }
 
-    printf(" max ride load = %d\n", max_ride_load);
+    //printf(" max ride load = %d\n", max_ride_load);
     //customers.find(2038469)->second.analyze();
     //exit(1);
 }
@@ -162,7 +231,12 @@ VASTApp::VASTApp(std::string filename){
     setWindowTitle("VAST Challenge Viewer");
 
     aPark.read_events(filename);
-    aPark.parse_events();
+
+    std::string dayname = (filename.find("Fri") != -1) ? "Fri" :
+                          (filename.find("Sat") != -1) ? "Sat" :
+                          (filename.find("Sun") != -1) ? "Sun" : "Unknown";
+
+    aPark.parse_events(dayname);
 
     show();
 }

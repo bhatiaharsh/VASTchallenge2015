@@ -32,6 +32,8 @@ class VASTViewer : public QGLViewer{
 
 public:
 
+    //int showrideno;
+
     uint live_animation_time;
     float park_X, park_Y;
 
@@ -43,7 +45,7 @@ protected :
 
     virtual void draw();
     virtual void animate();
-    //virtual void keyPressEvent(QKeyEvent* event){}
+    virtual void keyPressEvent(QKeyEvent* event);
 
     virtual void init();
 };

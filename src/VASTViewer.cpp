@@ -22,6 +22,8 @@ VASTViewer::VASTViewer(QWidget *parent) : QGLViewer(parent){
     this->live_animation_time = 0;
     this->park_X = 500;
     this->park_Y = 500;
+
+    //showrideno = 0;
 }
 
 void VASTViewer::init(){
@@ -115,17 +117,20 @@ void VASTViewer::init(){
     // Opens help window
   //help();
 }
-#if 0
-void AtomTrajectoryViewer::keyPressEvent(QKeyEvent* event){
-
+void VASTViewer::keyPressEvent(QKeyEvent* event){
+/*
     switch(event->key()){
 
-        case 'N':   parentApp->ui.groupBox_anim->setChecked( !parentApp->ui.groupBox_anim->isChecked() );
-                    break;
+    case '2':   showrideno = (showrideno+1) % parentApp->aPark.rides.size();
+                //parentApp->ui.groupBox_anim->setChecked( !parentApp->ui.groupBox_anim->isChecked() );
+                break;
+    case '1':   if(showrideno > 0)  showrideno--;
+                else                showrideno = parentApp->aPark.rides.size()-1;
+                //parentApp->ui.groupBox_anim->setChecked( !parentApp->ui.groupBox_anim->isChecked() );
+                break;
     }
-    updateGL();
+    updateGL();*/
 }
-#endif
 
 void VASTViewer::draw(){
 
@@ -198,17 +203,21 @@ void VASTViewer::draw(){
 
     glColor3f(0,1,0);
 
-    map<coords, ParkRide>::const_iterator riter = parentApp->aPark.rides.begin();
+    map<int, ParkRide>::const_iterator riter = parentApp->aPark.rides.begin();
     for(; riter != parentApp->aPark.rides.end(); riter++){
 
-        const ParkRide &ride = riter->second;
+        //if(showrideno != std::distance( (map<coords, ParkRide>::const_iterator)parentApp->aPark.rides.begin(), riter))
+          //  continue;
 
+        const ParkRide &ride = riter->second;
         int psize = ride.get_load(currtime) * size_factor;
 
         glPointSize(psize);
         glBegin(GL_POINTS);
-            glVertex3f(riter->first.first, riter->first.second, 0);
+            glVertex3f(ride.ride_coords.first, ride.ride_coords.second, 0);
         glEnd();
+
+        //printf(" %d -- %d,%d\n", showrideno, riter->first.first, riter->first.second);
     }
 
 
@@ -234,6 +243,8 @@ void VASTViewer::draw(){
         this->renderText(10,52,tag2);
     }
 }
+
+
 
 void VASTViewer::animate(){
     live_animation_time = (live_animation_time + parentApp->ui.sb_animSpeed->value()) % (parentApp->aPark.time_end-parentApp->aPark.time_beg);
